@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: collectors
+      POSTGRES_USER: collectors
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-collectors}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U collectors -d collectors"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/collectors
+      SPRING_DATASOURCE_USERNAME: collectors
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-collectors}
+      APP_THEME: ${APP_THEME:-artisanal-bids}
+      APP_NAME: ${APP_NAME:-collectors-market}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
